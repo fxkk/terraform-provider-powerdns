@@ -188,7 +188,6 @@ type ZoneInfo struct {
 type ZoneMetadata struct {
 	Kind     string   `json:"kind"`
 	Metadata []string `json:"metadata"`
-	Type     string   `json:"type"`
 }
 
 // ZoneInfoUpd is a limited subset for supported updates
@@ -500,6 +499,62 @@ func (client *Client) GetZoneMetadata(zone string) ([]ZoneMetadata, error) {
 	}
 
 	return metadata, nil
+}
+
+func (client *Client) UpdateZoneMetadata(zone string, metadata []ZoneMetadata) error {
+
+	for _, m := range metadata {
+		body, err := json.Marshal(m)
+		if err != nil {
+			return err
+		}
+
+		req, err := client.newRequest("PUT", fmt.Sprintf("/servers/localhost/zones/%s/metadata/%s", zone, m.Kind), body)
+		if err != nil {
+			return err
+		}
+
+		resp, err := client.HTTP.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			errorResp := new(errorResponse)
+			if err = json.NewDecoder(resp.Body).Decode(errorResp); err != nil {
+				return fmt.Errorf("Error updating metadata %s for zone: %s", m.Kind, zone)
+			}
+			return fmt.Errorf("Error updating metadata %s for zone: %s, reason: %q", m.Kind, zone, errorResp.ErrorMsg)
+		}
+	}
+
+	return nil
+}
+
+func (client *Client) DeleteZoneMetadata(zone string, metadata []ZoneMetadata) error {
+
+	for _, m := range metadata {
+		req, err := client.newRequest("DELETE", fmt.Sprintf("/servers/localhost/zones/%s/metadata/%s", zone, m.Kind), nil)
+		if err != nil {
+			return err
+		}
+
+		resp, err := client.HTTP.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusNoContent {
+			errorResp := new(errorResponse)
+			if err = json.NewDecoder(resp.Body).Decode(errorResp); err != nil {
+				return fmt.Errorf("Error deleting metadata %s for zone: %s", m.Kind, zone)
+			}
+			return fmt.Errorf("Error deleting metadata %s for zone: %s, reason: %q", m.Kind, zone, errorResp.ErrorMsg)
+		}
+	}
+	return nil
 }
 
 // ListRecords returns all records in Zone
