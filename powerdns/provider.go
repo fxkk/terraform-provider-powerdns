@@ -58,6 +58,10 @@ func Provider() terraform.ResourceProvider {
 			"powerdns_record": resourcePDNSRecord(),
 		},
 
+		DataSourcesMap: map[string]*schema.Resource{
+			"powerdns_zone_metadata": dataSourcePowerDNSZoneMetadata(),
+		},
+
 		ConfigureFunc: providerConfigure,
 	}
 }

@@ -185,6 +185,12 @@ type ZoneInfo struct {
 	SoaEditAPI         string              `json:"soa_edit_api"`
 }
 
+type ZoneMetadata struct {
+	Kind     string   `json:"kind"`
+	Metadata []string `json:"metadata"`
+	Type     string   `json:"type"`
+}
+
 // ZoneInfoUpd is a limited subset for supported updates
 type ZoneInfoUpd struct {
 	Name       string `json:"name"`
@@ -464,6 +470,36 @@ func (client *Client) GetZoneInfoFromCache(zone string) (*ZoneInfo, error) {
 		return zoneInfo, err
 	}
 	return nil, nil
+}
+
+// GetZoneMetadata returns metadata for a zone
+func (client *Client) GetZoneMetadata(zone string) ([]ZoneMetadata, error) {
+	req, err := client.newRequest("GET", fmt.Sprintf("/servers/localhost/zones/%s/metadata", zone), nil)
+	if err != nil {
+		return []ZoneMetadata{}, err
+	}
+
+	resp, err := client.HTTP.Do(req)
+	if err != nil {
+		return []ZoneMetadata{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errorResp := new(errorResponse)
+		if err = json.NewDecoder(resp.Body).Decode(errorResp); err != nil {
+			return nil, fmt.Errorf("Error getting metadata for zone: %s", zone)
+		}
+		return nil, fmt.Errorf("Error getting metadata for zone: %s, reason: %q", zone, errorResp.ErrorMsg)
+	}
+
+	var metadata []ZoneMetadata
+	err = json.NewDecoder(resp.Body).Decode(&metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
 }
 
 // ListRecords returns all records in Zone
